@@ -18,7 +18,7 @@ Eine webbasierte, Kahoot-ähnliche Live-Quiz-Anwendung für Lehrveranstaltungen.
 npm install
 ```
 
-Für lokale Entwicklung ohne Redis eine `.env.local` erstellen:
+Für lokale Entwicklung ist keine Redis-Konfiguration nötig. Optional eine `.env.local` erstellen:
 
 ```bash
 ADMIN_CREATE_PASSWORD=change-me
@@ -36,28 +36,36 @@ Die App läuft dann unter `http://localhost:3000`.
 
 ## Vercel Deployment
 
-Das Projekt ist für Vercel vorbereitet. Für Livebetrieb sollte Redis/Vercel KV verwendet werden, weil In-Memory-Speicher auf mehreren Serverless-Instanzen nicht konsistent ist.
+Das Projekt läuft ohne zusätzliche Konfiguration mit dem In-Memory-Store. Dadurch kann man es direkt lokal oder auf Vercel ausprobieren.
+
+Für zuverlässigeren Livebetrieb sollte Redis/Vercel KV verwendet werden, weil In-Memory-Speicher auf mehreren Serverless-Instanzen nicht konsistent ist.
 
 Erforderliche Environment Variables auf Vercel:
 
 ```bash
 ADMIN_CREATE_PASSWORD=ein-sicheres-passwort
 SESSION_TTL_SECONDS=7200
+SESSION_STORE=memory
+```
+
+Optionale Redis-/KV-Variablen für robusteren Livebetrieb:
+
+```bash
 SESSION_STORE=redis
 KV_REST_API_URL=...
 KV_REST_API_TOKEN=...
 ```
 
-`KV_REST_API_URL` und `KV_REST_API_TOKEN` kommen aus Vercel KV bzw. Upstash Redis. Die TTL sorgt dafür, dass Sessions automatisch ablaufen. Empfohlen ist für Lehrveranstaltungen ein Wert von 7200 Sekunden.
+`KV_REST_API_URL` und `KV_REST_API_TOKEN` kommen aus Vercel KV bzw. Upstash Redis. Wenn `SESSION_STORE=redis` gesetzt ist, aber die Redis-Variablen fehlen, fällt die App automatisch auf den In-Memory-Store zurück. Die TTL sorgt dafür, dass Sessions automatisch ablaufen. Empfohlen ist für Lehrveranstaltungen ein Wert von 7200 Sekunden.
 
 ## Storage
 
 Die Storage-Abstraktion liegt in `lib/session-store.ts`.
 
-- `lib/session-store-memory.ts`: nur für lokale Entwicklung und Demos geeignet.
+- `lib/session-store-memory.ts`: Standard ohne zusätzliche Konfiguration; geeignet für lokale Entwicklung, Demos und einfache Nutzung.
 - `lib/session-store-redis.ts`: für Vercel und Livebetrieb über Vercel KV / Redis.
 
-Wichtig: `SESSION_STORE=memory` funktioniert lokal, ist aber auf Vercel für parallele Serverless-Instanzen nicht zuverlässig. Für Livebetrieb mit ca. 30 Teilnehmern pro Session `SESSION_STORE=redis` nutzen.
+Wichtig: `SESSION_STORE=memory` ist am einfachsten, kann auf Vercel bei mehreren Serverless-Instanzen aber inkonsistent werden. Für möglichst zuverlässigen Livebetrieb mit ca. 30 Teilnehmern pro Session `SESSION_STORE=redis` nutzen.
 
 ## Performance und Livebetrieb
 
@@ -65,8 +73,8 @@ Die App ist auf einfache, stabile Nutzung in Lehrveranstaltungen ausgelegt. Bei 
 
 Für den Livebetrieb:
 
-- `SESSION_STORE=redis` verwenden, nicht `memory`.
-- Vercel KV / Upstash Redis mit TTL nutzen.
+- Ohne zusätzliche Konfiguration funktioniert `SESSION_STORE=memory`.
+- Für höhere Zuverlässigkeit Vercel KV / Upstash Redis mit TTL nutzen.
 - Pro Session realistisch ca. 30 Teilnehmer einplanen; technisch ist ein kleiner Puffer vorhanden.
 - Host sollte die Session nach Ende löschen oder auslaufen lassen.
 

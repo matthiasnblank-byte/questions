@@ -10,11 +10,17 @@ export interface SessionStore {
 }
 
 export function getSessionStore(): SessionStore {
-  if (process.env.SESSION_STORE === "memory" || (!process.env.SESSION_STORE && process.env.NODE_ENV !== "production")) {
-    return memorySessionStore;
+  const wantsRedis = process.env.SESSION_STORE === "redis";
+  const hasRedisConfig = Boolean(
+    (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
+      (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)
+  );
+
+  if (wantsRedis && hasRedisConfig) {
+    return redisSessionStore;
   }
 
-  return redisSessionStore;
+  return memorySessionStore;
 }
 
 export function getSessionTtlSeconds(): number {
