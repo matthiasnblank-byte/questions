@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import type { Game, Player, Session } from "@/lib/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { HostView, Player } from "@/lib/types";
 import { Card } from "./Card";
 import { CountdownBar } from "./CountdownBar";
 import { GameCodeDisplay } from "./GameCodeDisplay";
@@ -12,9 +12,7 @@ import { QuestionCard } from "./QuestionCard";
 import { ResultChart } from "./ResultChart";
 import { Scoreboard } from "./Scoreboard";
 
-interface HostPayload {
-  session: Session;
-  game: Game;
+interface HostPayload extends HostView {
   answerCounts: Record<string, number>;
   scoreboard: Player[];
 }
@@ -24,18 +22,28 @@ export function HostClient({ code, token }: { code: string; token: string }) {
   const [data, setData] = useState<HostPayload | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const isRefreshing = useRef(false);
 
   const joinLink = useMemo(() => (typeof window === "undefined" ? "" : `${window.location.origin}/join/${code}`), [code]);
 
   async function refresh() {
-    const response = await fetch(`/api/sessions/${code}/host?token=${encodeURIComponent(token)}`, { cache: "no-store" });
-    const payload = await response.json();
-    if (!response.ok) {
-      setError(payload.error ?? "Host-Daten konnten nicht geladen werden.");
+    if (isRefreshing.current) {
       return;
     }
-    setError("");
-    setData(payload);
+
+    isRefreshing.current = true;
+    try {
+      const response = await fetch(`/api/sessions/${code}/host?token=${encodeURIComponent(token)}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) {
+        setError(payload.error ?? "Host-Daten konnten nicht geladen werden.");
+        return;
+      }
+      setError("");
+      setData(payload);
+    } finally {
+      isRefreshing.current = false;
+    }
   }
 
   async function action(path: string, method = "POST") {
@@ -59,7 +67,7 @@ export function HostClient({ code, token }: { code: string; token: string }) {
 
   useEffect(() => {
     refresh();
-    const timer = window.setInterval(refresh, 800);
+    const timer = window.setInterval(refresh, 1000);
     return () => window.clearInterval(timer);
   }, []);
 

@@ -1,5 +1,5 @@
 import { getGame } from "./games";
-import type { Player, PlayerView, Session } from "./types";
+import type { HostView, Player, PlayerView, Session } from "./types";
 
 export function sortedScoreboard(players: Player[]): Player[] {
   return [...players].sort((a, b) => b.score - a.score || a.joinedAt - b.joinedAt);
@@ -24,7 +24,7 @@ export function toPlayerView(session: Session, playerId?: string | null): Player
   const rawQuestion = game?.questions[session.currentQuestionIndex] ?? null;
   const question = session.status === "lobby" ? null : rawQuestion;
   const player = session.players.find((candidate) => candidate.id === playerId) ?? null;
-  const showCorrect = session.status === "showing_results" || session.status === "question_closed" || session.status === "finished";
+  const showCorrect = session.status === "showing_results" || session.status === "finished";
   const hasAnswered = Boolean(player && question && session.answers.some((answer) => answer.playerId === player.id && answer.questionId === question.id));
 
   return {
@@ -50,5 +50,21 @@ export function toPlayerView(session: Session, playerId?: string | null): Player
       : null,
     hasAnswered,
     ...(showCorrect ? { answerCounts: answerCountsForCurrentQuestion(session), scoreboard: sortedScoreboard(session.players) } : {})
+  };
+}
+
+export function toHostView(session: Session): HostView & { answerCounts: Record<string, number>; scoreboard: Player[] } {
+  const game = getGame(session.gameId);
+  const { adminTokenHash: _adminTokenHash, ...safeSession } = session;
+
+  return {
+    session: safeSession,
+    game: game ?? {
+      id: session.gameId,
+      title: "Unbekanntes Spiel",
+      questions: []
+    },
+    answerCounts: answerCountsForCurrentQuestion(session),
+    scoreboard: sortedScoreboard(session.players)
   };
 }

@@ -6,6 +6,8 @@ import { getSessionStore, getSessionTtlSeconds } from "./session-store";
 import { normalizeCode, sanitizeNickname } from "./validation";
 import type { Player, Session } from "./types";
 
+const MAX_PLAYERS_PER_SESSION = 40;
+
 export class AppError extends Error {
   constructor(
     message: string,
@@ -27,6 +29,25 @@ export function assertAdmin(session: Session, token: string | null | undefined):
   if (!verifyToken(token, session.adminTokenHash)) {
     throw new AppError("Admin-Token ist ungültig.", 401);
   }
+}
+
+function closeExpiredQuestionIfNeeded(session: Session, now = Date.now()): Session {
+  if (session.status === "question_active" && session.questionEndsAt && now >= session.questionEndsAt) {
+    session.status = "question_closed";
+  }
+
+  return session;
+}
+
+export async function getSessionForRead(code: string): Promise<Session | null> {
+  const store = getSessionStore();
+  const session = await store.getSession(code);
+
+  if (!session) {
+    return null;
+  }
+
+  return closeExpiredQuestionIfNeeded(structuredClone(session));
 }
 
 export async function createSession(gameId: string, joinPassword?: string) {
@@ -88,7 +109,7 @@ export async function joinSession(code: string, nicknameInput: string, joinPassw
       throw new AppError("Dieser Nickname ist bereits vergeben.");
     }
 
-    if (session.players.length >= 60) {
+    if (session.players.length >= MAX_PLAYERS_PER_SESSION) {
       throw new AppError("Diese Session ist voll.");
     }
 
@@ -131,6 +152,7 @@ export async function startQuiz(code: string, token: string) {
 export async function submitAnswer(code: string, playerId: string, optionId: string) {
   const store = getSessionStore();
   return store.updateSession(code, (session) => {
+    closeExpiredQuestionIfNeeded(session);
     const game = requireGame(session.gameId);
     const question = game.questions[session.currentQuestionIndex];
     const player = session.players.find((candidate) => candidate.id === playerId);
@@ -193,6 +215,7 @@ export async function showResults(code: string, token: string) {
   const store = getSessionStore();
   return store.updateSession(code, (session) => {
     assertAdmin(session, token);
+    closeExpiredQuestionIfNeeded(session);
     if (session.status !== "question_active" && session.status !== "question_closed") {
       throw new AppError("Auswertung kann aktuell nicht angezeigt werden.");
     }
@@ -206,6 +229,7 @@ export async function nextQuestion(code: string, token: string) {
   const store = getSessionStore();
   return store.updateSession(code, (session) => {
     assertAdmin(session, token);
+    closeExpiredQuestionIfNeeded(session);
     if (session.status !== "showing_results" && session.status !== "question_closed") {
       throw new AppError("Nächste Frage ist erst nach der Auswertung möglich.");
     }

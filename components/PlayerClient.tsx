@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PlayerView } from "@/lib/types";
 import { AnswerButton } from "./AnswerButton";
 import { Card } from "./Card";
@@ -16,16 +16,26 @@ export function PlayerClient({ code }: { code: string }) {
   const [data, setData] = useState<PlayerView | null>(null);
   const [selectedOption, setSelectedOption] = useState("");
   const [error, setError] = useState("");
+  const isRefreshing = useRef(false);
 
   async function refresh(currentPlayerId = playerId) {
-    const response = await fetch(`/api/sessions/${code}/player?playerId=${encodeURIComponent(currentPlayerId)}`, { cache: "no-store" });
-    const payload = await response.json();
-    if (!response.ok) {
-      setError(payload.error ?? "Spielstand konnte nicht geladen werden.");
+    if (isRefreshing.current) {
       return;
     }
-    setError("");
-    setData(payload);
+
+    isRefreshing.current = true;
+    try {
+      const response = await fetch(`/api/sessions/${code}/player?playerId=${encodeURIComponent(currentPlayerId)}`, { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) {
+        setError(payload.error ?? "Spielstand konnte nicht geladen werden.");
+        return;
+      }
+      setError("");
+      setData(payload);
+    } finally {
+      isRefreshing.current = false;
+    }
   }
 
   async function answer(optionId: string) {
@@ -52,7 +62,7 @@ export function PlayerClient({ code }: { code: string }) {
     const stored = window.localStorage.getItem(`quiz-player-${code}`) ?? "";
     setPlayerId(stored);
     refresh(stored);
-    const timer = window.setInterval(() => refresh(stored), 800);
+    const timer = window.setInterval(() => refresh(stored), 1000);
     return () => window.clearInterval(timer);
   }, [code]);
 
@@ -74,7 +84,8 @@ export function PlayerClient({ code }: { code: string }) {
     return <Card><p>Spiel wird geladen...</p></Card>;
   }
 
-  const canAnswer = data.status === "question_active" && !data.hasAnswered;
+  const isWithinCountdown = !data.questionEndsAt || Date.now() <= data.questionEndsAt;
+  const canAnswer = data.status === "question_active" && !data.hasAnswered && isWithinCountdown;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
@@ -110,7 +121,7 @@ export function PlayerClient({ code }: { code: string }) {
           </div>
         ) : null}
       </Card>
-      {(data.status === "showing_results" || data.status === "question_closed" || data.status === "finished") && data.question && data.answerCounts ? (
+      {(data.status === "showing_results" || data.status === "finished") && data.question && data.answerCounts ? (
         <Card className="space-y-4">
           <h2 className="text-xl font-semibold">Auswertung</h2>
           <ResultChart options={data.question.options} counts={data.answerCounts} correctOptionId={data.question.correctOptionId ?? ""} />

@@ -67,7 +67,7 @@ export interface PublicQuestion {
 }
 
 export interface HostView {
-  session: Session;
+  session: Omit<Session, "adminTokenHash">;
   game: Game;
 }
 
