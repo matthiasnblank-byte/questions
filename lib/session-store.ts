@@ -11,10 +11,9 @@ export interface SessionStore {
 
 export function getSessionStore(): SessionStore {
   const wantsRedis = process.env.SESSION_STORE === "redis";
-  const hasRedisConfig = Boolean(
-    (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) &&
-      (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN)
-  );
+  const redisUrl = (process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "").trim();
+  const redisToken = (process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || "").trim();
+  const hasRedisConfig = Boolean(redisUrl && redisToken);
 
   if (wantsRedis && hasRedisConfig) {
     return redisSessionStore;

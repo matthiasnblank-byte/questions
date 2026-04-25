@@ -1,19 +1,20 @@
 import { Redis } from "@upstash/redis";
 import type { SessionStore } from "./session-store";
 import type { Session } from "./types";
+import { memorySessionStore } from "./session-store-memory";
 
 let redis: Redis | null = null;
 
-function getRedis(): Redis {
+function getRedis(): Redis | null {
   if (redis) {
     return redis;
   }
 
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = (process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL ?? "").trim();
+  const token = (process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN ?? "").trim();
 
   if (!url || !token) {
-    throw new Error("Redis Store benötigt KV_REST_API_URL und KV_REST_API_TOKEN.");
+    return null;
   }
 
   redis = new Redis({ url, token });
@@ -35,14 +36,30 @@ function cloneSession(session: Session): Session {
 
 export const redisSessionStore: SessionStore = {
   async createSession(session) {
-    await getRedis().set(key(session.code), session, { ex: getSessionTtlSeconds() });
+    const client = getRedis();
+    if (!client) {
+      await memorySessionStore.createSession(session);
+      return;
+    }
+
+    await client.set(key(session.code), session, { ex: getSessionTtlSeconds() });
   },
 
   async getSession(code) {
-    return await getRedis().get<Session>(key(code));
+    const client = getRedis();
+    if (!client) {
+      return memorySessionStore.getSession(code);
+    }
+
+    return await client.get<Session>(key(code));
   },
 
   async updateSession(code, updater) {
+    const client = getRedis();
+    if (!client) {
+      return memorySessionStore.updateSession(code, updater);
+    }
+
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const current = await this.getSession(code);
       if (!current) {
@@ -65,7 +82,7 @@ export const redisSessionStore: SessionStore = {
         redis.call("SET", key, value, "EX", ttl)
         return 1
       `;
-      const result = await getRedis().eval(script, [key(code)], [current.version, getSessionTtlSeconds(), JSON.stringify(next)]);
+      const result = await client.eval(script, [key(code)], [current.version, getSessionTtlSeconds(), JSON.stringify(next)]);
 
       if (result === 1) {
         return next;
@@ -76,6 +93,12 @@ export const redisSessionStore: SessionStore = {
   },
 
   async deleteSession(code) {
-    await getRedis().del(key(code));
+    const client = getRedis();
+    if (!client) {
+      await memorySessionStore.deleteSession(code);
+      return;
+    }
+
+    await client.del(key(code));
   }
 };
