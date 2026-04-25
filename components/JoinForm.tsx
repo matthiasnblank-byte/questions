@@ -53,15 +53,18 @@ export function JoinForm({ initialCode = "" }: { initialCode?: string }) {
           />
         </label>
         <label className="block">
-          <span className="mb-2 block text-sm font-semibold text-slate-700">Nickname</span>
+          <span className="mb-2 block text-sm font-semibold text-slate-700">Alias oder Avatar-Name</span>
           <input
             className="focus-ring w-full rounded-xl border border-slateLine px-4 py-3"
             value={nickname}
             onChange={(event) => setNickname(event.target.value)}
             maxLength={30}
             required
-            placeholder="Max"
+            placeholder="Eule-17"
           />
+          <span className="mt-2 block text-xs leading-5 text-slate-600">
+            Bitte keine Klarnamen, Matrikelnummern, E-Mail-Adressen oder andere personenbezogene Daten verwenden.
+          </span>
         </label>
         <label className="block">
           <span className="mb-2 block text-sm font-semibold text-slate-700">Teilnehmerpasswort optional</span>

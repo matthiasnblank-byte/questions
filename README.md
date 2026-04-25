@@ -5,11 +5,11 @@ Eine webbasierte, Kahoot-ähnliche Live-Quiz-Anwendung für Lehrveranstaltungen.
 ## Funktionen
 
 - Host erstellt eine temporäre Quiz-Session mit Spielcode und geheimem Admin-Link.
-- Teilnehmer treten per Spielcode oder Link mit eindeutigem Nickname bei.
+- Teilnehmer treten per Spielcode oder Link mit eindeutigem Alias-/Avatar-Namen bei.
 - Host steuert Lobby, Fragen, Countdown, Auswertung, Zwischenranking und finale Rangliste.
 - Teilnehmer sehen während aktiver Fragen keine richtige Antwort.
 - Punkte werden ausschließlich serverseitig berechnet: richtig und schnell ergibt mehr Punkte.
-- Realtime-Aktualisierung läuft bewusst einfach über Polling alle ca. 800 ms.
+- Realtime-Aktualisierung läuft bewusst einfach über Polling alle ca. 1000 ms.
 - Sessiondaten werden nur temporär gehalten und per TTL gelöscht.
 
 ## Installation
@@ -59,6 +59,17 @@ Die Storage-Abstraktion liegt in `lib/session-store.ts`.
 
 Wichtig: `SESSION_STORE=memory` funktioniert lokal, ist aber auf Vercel für parallele Serverless-Instanzen nicht zuverlässig. Für Livebetrieb mit ca. 30 Teilnehmern pro Session `SESSION_STORE=redis` nutzen.
 
+## Performance und Livebetrieb
+
+Die App ist auf einfache, stabile Nutzung in Lehrveranstaltungen ausgelegt. Bei ca. 30 Teilnehmern erzeugt das Polling im Sekundenrhythmus eine überschaubare Last. Teilnehmer-Responses sind bewusst kompakt und enthalten während aktiver Fragen keine korrekte Antwort. Schreibzugriffe entstehen vor allem beim Beitritt, beim Antworten und bei Host-Aktionen.
+
+Für den Livebetrieb:
+
+- `SESSION_STORE=redis` verwenden, nicht `memory`.
+- Vercel KV / Upstash Redis mit TTL nutzen.
+- Pro Session realistisch ca. 30 Teilnehmer einplanen; technisch ist ein kleiner Puffer vorhanden.
+- Host sollte die Session nach Ende löschen oder auslaufen lassen.
+
 ## Admin-Erstellung
 
 Neue Sessions werden unter `/admin/create` erstellt. Das Formular prüft `ADMIN_CREATE_PASSWORD`. Wenn lokal kein Passwort gesetzt ist oder es `change-me` lautet, ist die Erstellung bewusst offen, um die Demo schnell starten zu können. Für Vercel immer ein eigenes Passwort setzen.
@@ -79,6 +90,8 @@ Die Dummy-Spiele liegen in `lib/games.ts`. Dort können Spiele, Fragen, Optionen
 ## Datenschutz
 
 Die App nutzt keine externe Authentifizierung, keine Analytics, kein Tracking und keine dauerhaften Cookies. Teilnehmerdaten werden nicht dauerhaft gespeichert. Sessiondaten existieren nur temporär im Memory-Store oder in Redis bis zum manuellen Löschen bzw. Ablauf der TTL.
+
+Teilnehmer sollen keine personenbezogenen Daten eingeben. Für den Namen im Quiz sind neutrale Alias- oder Avatar-Namen vorgesehen, zum Beispiel `Eule-17`, `Tafelstern`, `Gruppe Blau` oder `Team 04`. Nicht verwenden: Klarnamen, Matrikelnummern, E-Mail-Adressen, Telefonnummern oder sonstige identifizierende Angaben.
 
 ## Wichtige Routen
 

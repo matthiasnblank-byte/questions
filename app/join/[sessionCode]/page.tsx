@@ -9,7 +9,7 @@ export default async function JoinCodePage({ params }: { params: Promise<{ sessi
       <div className="mx-auto mb-8 max-w-xl">
         <Link className="text-sm font-semibold text-accent" href="/">Zurück</Link>
         <h1 className="mt-8 font-serif text-5xl font-bold">Beitreten</h1>
-        <p className="mt-4 text-slate-700">Der Spielcode ist bereits vorausgefüllt.</p>
+        <p className="mt-4 text-slate-700">Der Spielcode ist bereits vorausgefüllt. Bitte einen neutralen Alias- oder Avatar-Namen verwenden.</p>
       </div>
       <JoinForm initialCode={sessionCode} />
     </main>

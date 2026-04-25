@@ -27,6 +27,21 @@ export default function HomePage() {
           </Link>
         </Card>
       </div>
+      <Card className="mt-6 grid gap-4 border-accent/20 bg-[#f8fbfb] md:grid-cols-2">
+        <div>
+          <h2 className="text-xl font-semibold">Datenschutz-Hinweis</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Teilnehmer sollen keine Klarnamen, Matrikelnummern, E-Mail-Adressen oder andere personenbezogene Daten eingeben.
+            Empfohlen sind neutrale Alias- oder Avatar-Namen wie <span className="font-semibold">Eule-17</span>, <span className="font-semibold">Tafelstern</span> oder <span className="font-semibold">Gruppe Blau</span>.
+          </p>
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold">Betrieb</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Für Livebetrieb mit ca. 30 Teilnehmern Redis/Vercel KV verwenden. Die App nutzt bewusst einfaches Polling im Sekundenrhythmus und hält Sessiondaten nur temporär.
+          </p>
+        </div>
+      </Card>
     </main>
   );
 }
